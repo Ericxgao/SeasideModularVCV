@@ -16,6 +16,10 @@ int weightedRandom(int weights[],int num_choices) {
         }
         rnd -= weights[i];
     }
+    #ifdef METAMODULE
+    return 0;
+    #else
     assert(!"we should not ever get to this place");
+    #endif
 }
 

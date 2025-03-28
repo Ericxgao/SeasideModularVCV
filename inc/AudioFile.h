@@ -42,7 +42,9 @@
 #include <cassert>
 #include <string>
 #include <cstring>
+#ifndef METAMODULE
 #include <fstream>
+#endif
 #include <unordered_map>
 #include <iterator>
 #include <algorithm>
@@ -357,6 +359,7 @@ double AudioFile<T>::getLengthInSeconds() const
 template <class T>
 void AudioFile<T>::printSummary() const
 {
+    #ifndef METAMODULE
     std::cout << "|======================================|" << std::endl;
     std::cout << "Num Channels: " << getNumChannels() << std::endl;
     std::cout << "Num Samples Per Channel: " << getNumSamplesPerChannel() << std::endl;
@@ -364,6 +367,7 @@ void AudioFile<T>::printSummary() const
     std::cout << "Bit Depth: " << bitDepth << std::endl;
     std::cout << "Length in Seconds: " << getLengthInSeconds() << std::endl;
     std::cout << "|======================================|" << std::endl;
+    #endif
 }
 
 //=============================================================
@@ -466,6 +470,39 @@ void AudioFile<T>::shouldLogErrorsToConsole (bool logErrors)
 
 //=============================================================
 template <class T>
+#ifdef METAMODULE
+bool AudioFile<T>::load (std::string filePath)
+{
+    FILE* file = fopen(filePath.c_str(), "rb");
+    
+    // check the file exists
+    if (!file)
+    {
+        reportError ("ERROR: File doesn't exist or otherwise can't load file\n" + filePath);
+        return false;
+    }
+    
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    size_t length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    std::vector<uint8_t> fileData;
+    fileData.resize(length);
+    
+    // Read file data
+    size_t bytesRead = fread(fileData.data(), 1, length, file);
+    fclose(file);
+    
+    if (bytesRead != length)
+    {
+        reportError ("ERROR: Couldn't read entire file\n" + filePath);
+        return false;
+    }
+    
+    return loadFromMemory(fileData);
+}
+#else
 bool AudioFile<T>::load (std::string filePath)
 {
     std::ifstream file (filePath, std::ios::binary);
@@ -499,7 +536,7 @@ bool AudioFile<T>::load (std::string filePath)
     
     return loadFromMemory (fileData);
 }
-
+#endif
 //=============================================================
 template <class T>
 bool AudioFile<T>::loadFromMemory (std::vector<uint8_t>& fileData)
@@ -1086,6 +1123,22 @@ bool AudioFile<T>::saveToAiffFile (std::string filePath)
 
 //=============================================================
 template <class T>
+#ifdef METAMODULE
+bool AudioFile<T>::writeDataToFile (std::vector<uint8_t>& fileData, std::string filePath)
+{
+    FILE* outputFile = fopen(filePath.c_str(), "wb");
+    
+    if (outputFile)
+    {
+        size_t bytesWritten = fwrite(fileData.data(), 1, fileData.size(), outputFile);
+        fclose(outputFile);
+        
+        return bytesWritten == fileData.size();
+    }
+    
+    return false;
+}
+#else
 bool AudioFile<T>::writeDataToFile (std::vector<uint8_t>& fileData, std::string filePath)
 {
     std::ofstream outputFile (filePath, std::ios::binary);
@@ -1104,7 +1157,7 @@ bool AudioFile<T>::writeDataToFile (std::vector<uint8_t>& fileData, std::string 
     }
     
     return false;
-}
+#endif
 
 //=============================================================
 template <class T>
@@ -1306,8 +1359,10 @@ T AudioFile<T>::clamp (T value, T minValue, T maxValue)
 template <class T>
 void AudioFile<T>::reportError (std::string errorMessage)
 {
+    #ifndef METAMODULE
     if (logErrorsToConsole)
         std::cout << errorMessage << std::endl;
+    #endif
 }
 
 #if defined (_MSC_VER)

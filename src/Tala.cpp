@@ -181,7 +181,12 @@ struct Tala : Module {
         accentGate.Init(sampleRate);
         accentGate.SetDuration(0.125);
 
+        #ifdef METAMODULE   
+        std::random_device rd;
+        rng.seed(rd());
+        #else
         rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+        #endif
 
 
     }

@@ -238,7 +238,12 @@ struct Proteus : Module {
 		sequenceLength = clamp(int(params[POT1_PARAM].getValue()) + lengthAdjustment,1,maxSteps);
 		restProbability = clamp(100 - params[POT5_PARAM].getValue() - (10 * densityCV),0.0,100.0); 
 
+		#ifdef METAMODULE
+		std::random_device rd;
+		rng.seed(rd());
+		#else
 		rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+		#endif
 
 		// Clear sequences
 		for (int i = 0; i < maxSteps; ++i) {
@@ -595,7 +600,11 @@ struct Proteus : Module {
 		for (int i = 0; i<sequenceLength; ++i) {
 			restorder[i] = i;
 		}
+		#ifdef METAMODULE
+		std::shuffle(std::begin(restorder), std::begin(restorder) + sequenceLength, rng);
+		#else
 		std::shuffle(std::begin(restorder),&restorder[sequenceLength-1],rng);
+		#endif
 
 		updateRests();
 
@@ -862,7 +871,11 @@ struct Proteus : Module {
 		for (int i = 0; i<sequenceLength; ++i) {
 			restorder[i] = i;
 		}
+		#ifdef METAMODULE
+		std::shuffle(std::begin(restorder), std::begin(restorder) + sequenceLength, rng);
+		#else
 		std::shuffle(std::begin(restorder),&restorder[sequenceLength-1],rng);
+		#endif
 		numRestNotes = ceil(sequenceLength*(restProbability/100));
 		if (numRestNotes == sequenceLength) {--numRestNotes;} //always leave at least one note
 

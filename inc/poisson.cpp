@@ -1673,9 +1673,10 @@ void ftnstop ( std::string msg )
 //    Input, string MSG, the message to be printed.
 //
 {
+  #ifndef METAMODULE
   cerr << msg << "\n";
-
   exit ( 0 );
+  #endif
 }
 
 

@@ -139,7 +139,12 @@ struct ProteusX : Module {
 
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
+        #ifdef METAMODULE
+        std::random_device rd;
+        rng.seed(rd());
+        #else
         rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+        #endif
 
 		configParam(POT1_PARAM, 0.0f, 11.0f, 0.0f, "Transpose"," semitones");
 		paramQuantities[POT1_PARAM]->snapEnabled = true;

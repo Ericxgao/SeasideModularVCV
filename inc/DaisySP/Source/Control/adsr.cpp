@@ -3,6 +3,9 @@
 
 using namespace daisysp;
 
+#ifdef METAMODULE
+#define M_E 2.71828182845904523536028747135266249775724709369995
+#endif
 
 void Adsr::Init(float sample_rate, int blockSize)
 {
