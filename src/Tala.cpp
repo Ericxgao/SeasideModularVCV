@@ -117,13 +117,11 @@ struct Tala : Module {
     // this has to be big enough to hold upsampled samples
     // longest sample is 2 seconds
     // 2 * 60 * 192000 = 2304000
-    std::unique_ptr<float[]> interpolationBuffer; 
+    float interpolationBuffer[2304000]; 
 
     std::default_random_engine rng;
 
     Tala() {
-        // Allocate the large buffer on the heap instead of stack
-        interpolationBuffer = std::make_unique<float[]>(2304000);
 
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(MODESWITCH_PARAM, 0.f, 2.f, 0.f, "Sample Mode");
@@ -169,7 +167,7 @@ struct Tala : Module {
 
         // //SET UP bols
         for (int i = 0; i < NUM_BOLS; ++i) {
-            bols[i] = Bol(BOLS[i], interpolationBuffer.get());
+            bols[i] = Bol(BOLS[i], interpolationBuffer);
             bols[i].mode = mode;
         }
 
@@ -191,10 +189,6 @@ struct Tala : Module {
         #endif
 
 
-    }
-
-    ~Tala() {
-        // Smart pointer will automatically free the memory
     }
 
     json_t *dataToJson() override {
