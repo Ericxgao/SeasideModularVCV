@@ -121,6 +121,12 @@ struct Tala : Module {
 
     std::default_random_engine rng;
 
+    // Add these variables for staggered loading
+    bool initialLoadComplete = false;
+    int currentBolLoading = 0;
+    int framesToSkip = 100; // Wait frames between loading each bol
+    int loadingFrameCount = 0;
+
     Tala() {
         // Allocate the large buffer on the heap instead of stack
         interpolationBuffer = std::make_unique<float[]>(2304000);
@@ -158,7 +164,6 @@ struct Tala : Module {
         configInput(RESET_INPUT,"Reset");
         configInput(CLOCK_INPUT,"Clock");
 
-
         configInput(ACC_INPUT,"Accent");
         configInput(THEKA_RAND_INPUT,"Choose random theka");
 
@@ -167,21 +172,27 @@ struct Tala : Module {
 
         mode = 0; // 0 = first sample only, 1 = round robin, 2 = random
 
-        // //SET UP bols
-        for (int i = 0; i < NUM_BOLS; ++i) {
-            bols[i] = Bol(BOLS[i], interpolationBuffer.get());
-            bols[i].mode = mode;
-        }
-
         sampleRate = APP->engine->getSampleRate();
 
-        for (int i = 0; i < NUM_BOL_BUTTONS; ++ i) {
+        // Initialize all gates with a single sample rate value
+        accentGate.Init(sampleRate);
+        accentGate.SetDuration(0.125);
+
+        silentGate.Init(sampleRate);
+        fadeOutGate.Init(sampleRate);
+        fadeInGate.Init(sampleRate);
+
+        // Initialize all lightGates at once
+        for (int i = 0; i < NUM_BOL_BUTTONS; ++i) {
             lightGates[i].Init(sampleRate);
             lightGates[i].SetDuration(0.25);
         }
 
-        accentGate.Init(sampleRate);
-        accentGate.SetDuration(0.125);
+        // Initialize bols with postponed loading
+        for (int i = 0; i < NUM_BOLS; ++i) {
+            bols[i] = Bol(BOLS[i], interpolationBuffer.get());
+            bols[i].mode = mode;
+        }
 
         #ifdef METAMODULE   
         std::random_device rd;
@@ -189,8 +200,6 @@ struct Tala : Module {
         #else
         rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
         #endif
-
-
     }
 
     ~Tala() {
@@ -291,6 +300,22 @@ struct Tala : Module {
     }
 
 	void process(const ProcessArgs& args) override {
+        
+        // Staggered loading of bols
+        if (!initialLoadComplete) {
+            if (loadingFrameCount <= 0) {
+                // Load next bol
+                if (currentBolLoading < NUM_BOLS) {
+                    bols[currentBolLoading].loadSamples(interpolationBuffer.get());
+                    currentBolLoading++;
+                    loadingFrameCount = framesToSkip;
+                } else {
+                    initialLoadComplete = true;
+                }
+            } else {
+                loadingFrameCount--;
+            }
+        }
 
         // Handle button lights
         for (int i = 0; i < NUM_BOL_BUTTONS; ++ i) {

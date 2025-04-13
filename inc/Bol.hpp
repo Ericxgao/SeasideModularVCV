@@ -57,24 +57,32 @@ public:
     int mode; // 0 = first sample only, 1 = round robin, 2 = random
     bool isPlaying = false;
     bool isReadyToPlay = false;
+    bool samplesLoaded = false;
     Sample current_sample;
 
     std::vector<Sample> samples;
+    float* buffer;
 
     Bol() {}
 
     Bol(std::string initname, float *buff) {
-
         bolName = initname;
-
-        //clear vectors
-        std::vector<Sample>().swap(samples);
-    
-        //Load in samples
-        loadSamples(buff);
+        buffer = buff;
+        
+        // Just prepare the file list without loading samples
+        std::vector<std::string> filesToLoad = fileNames.at(bolName);
+        num_sounds = static_cast<int>(filesToLoad.size());
+        
+        // Reserve space for samples to avoid reallocations
+        samples.reserve(num_sounds);
+        
+        // Mark as ready but samples not loaded yet
+        isReadyToPlay = true;
+        samplesLoaded = false;
     }
 
     int loadSamples(float *buff) {
+        if (samplesLoaded) return 1;
         
         isReadyToPlay = false;
         int success = 1;
@@ -83,17 +91,20 @@ public:
         num_sounds = static_cast<int>(filesToLoad.size());
 
         for (int i = 0; i < num_sounds; i++) {
-
             std::string filePath = rack::asset::plugin(pluginInstance,"res/bols/" + bolName + "/"+ filesToLoad.at(i));
             samples.push_back(Sample(filePath, buff));
-
         }
+        
         isReadyToPlay = true;
+        samplesLoaded = true;
         return success;
-
     }
 
     void reLoad() {
+        if (!samplesLoaded) {
+            loadSamples(buffer);
+            return;
+        }
         
         isReadyToPlay = false;
         for (int i = 0; i < num_sounds; i++) {
@@ -103,6 +114,10 @@ public:
     }
 
     void Play() {
+        // Load samples if not loaded yet
+        if (!samplesLoaded) {
+            loadSamples(buffer);
+        }
 
         isPlaying = true;
         switch(mode) {
@@ -122,7 +137,6 @@ public:
 
         current_sample = samples[current_sample_num];
         current_sample.currentSample = 0;
-        
     }
 
     void Stop() {
